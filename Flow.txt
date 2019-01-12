@@ -1,0 +1,337 @@
+https://github.com/IBM/build-blockchain-insurance-app
+
+======================================================================
+============================ BUILD & UP ==============================
+======================================================================
+
+BUILD
+cd build-blockchain-insurance-app
+./build_ubuntu.sh
+	sh ./ibm_fabric.sh
+	sh ./docker-images.sh
+	sleep 5
+	docker-compose up -d
+
+./ibm_fabric.sh
+	Generate crypto
+	$PROJPATH/cryptogen generate --config=$PROJPATH/crypto-config.yaml --output=$CLIPATH
+	and then copy to each peer/node folder (orderer, insurancePeer, shopPeer) as well as /web/certs folder
+
+	sh generate-cfgtx.sh
+		Generating Orderer Genesis block
+		Generating channel configuration transaction 'channel.tx'
+		Generating anchor peer update for each *Org
+		
+	** When chaincode is build/install/instantiate?
+		When startup the web application (setup.js)
+
+./docker-images.sh
+	Build docker images for each peer
+	Having method to pull Fabric Core and Fabric CA images
+	
+docker-compose up -d
+	Execute docker-compose.yaml
+
+docker-compose.yaml
+	Config and start all docker images
+
+For example, web instance will be start from
+.\web\Dockerfile
+	Build and then start with command
+		EXPOSE 3000
+		CMD ["npm", "run", "serve"]
+
+RESULT
+> blockchain-for-insurance@2.1.0 serve /app
+> cross-env NODE_ENV=production&&node ./bin/server
+
+/app/app/static/js
+Server running on port: 3000
+Default channel not found, attempting creation...
+Successfully created a new default channel.
+Joining peers to the default channel.
+Chaincode is not installed, attempting installation...
+Base container image present.
+info: [packager/Golang.js]: packaging GOLANG from bcins
+info: [packager/Golang.js]: packaging GOLANG from bcins
+info: [packager/Golang.js]: packaging GOLANG from bcins
+info: [packager/Golang.js]: packaging GOLANG from bcins
+Successfully installed chaincode on the default channel.
+Successfully instantiated chaincode on all peers.
+
+READY
+http://localhost:3000
+
+
+======================================================================
+======================= WEB SETUP & START ============================
+======================================================================
+
+web\package.json
+"serve": "cross-env NODE_ENV=production&&node ./bin/server"
+
+web\www\server.js
+	import server from './app';
+	Start Server listening on port 3000
+	server.listen(port, () => {
+	  console.log('Server running on port: %d', port);
+	});
+
+web\www\app.js
+	Setup routes
+	and using express as web server
+	
+web\www\config\express.js
+	Config web server include:
+		web\www\config\i18n.js
+		web\www\config\security.js
+		
+Then render Home page:
+	web\views\home.pug
+	
+======================================================================
+============================== REACT =================================
+======================================================================
+	web\src\block-explorer\*
+	web\src\insurance\*
+		+actions      
+		+components			
+		+locales			
+		+reducers
+		api.js
+		index.js
+		router.js
+		store.js
+		translations.js
+	web\src\police\*
+	web\src\repair-shop\*
+	web\src\shop\*
+
+TODO
+
+======================================================================
+=============================== SDK ==================================
+======================================================================
+web\www\blockchain\*.js
+	config.js
+	insurancePeer.js
+	policePeer.js
+	repairShopPeer.js
+	setup.js
+	shopPeer.js
+	utils.js
+	
+config.js: Information about:
+	certs dir: '../../certs'
+	channel config dir: '../../channel.tx'
+	chaincode name, path, version
+
+	Orderer
+		host name, URL, pem file
+
+	Organizarion:
+		peer
+			host name, url, eventHub URL, pem
+		ca
+			host name, URL, mspID
+		admin
+			key (pem), cert (pem)
+	...
+	Change to localhost if DEV env
+	Some test data
+
+setup.js:
+	class OrganizationClient will represent for each Organization
+		_channelName
+		_ordererConfig
+		_peerConfig
+		_caConfig
+		_admin
+		_peers
+		_eventHubs
+		_client
+		_channel
+		_adminUser
+	They are using the same orderer (orderer0)
+	
+	Initialized peer (JS) instances from config.js
+	(async () => {
+		// Login with 
+		// Setup event hubs
+		// Bootstrap blockchain network
+			Create channel and join the channel
+			 await insuranceClient.createChannel(config.channelConfig);
+			Calls the orderer to start building the new channel. A channel typically has more than one participating organizations. To create a new channel, one of the participating organizations should call this method to submit the creation request to the orderer service. 
+			Once the channel is successfully created by the orderer, the next step is to have each organization's peer nodes join the channel, by sending the channel configuration to each of the peer nodes. The step is accomplished by calling the joinChannel() method.
+				insuranceClient.joinChannel(),
+          		shopClient.joinChannel(),
+          		repairShopClient.joinChannel(),
+          		policeClient.joinChannel()
+          	Readmore:
+          		https://fabric-sdk-node.github.io/Client.html#createChannel__anchor
+				https://fabric-sdk-node.github.io/release-1.4/tutorial-channel-create.html
+		// Initialize network
+			await this._channel.initialize();
+				insuranceClient.initialize(),
+		      	shopClient.initialize(),
+		      	repairShopClient.initialize(),
+		      	policeClient.initialize()
+		    https://fabric-sdk-node.github.io/Channel.html#initialize__anchor
+		// Install chaincode on all peers
+			this._client.installChaincode(request);
+				insuranceClient.install(config.chaincodeId, config.chaincodeVersion, config.chaincodePath),
+			    shopClient.install(config.chaincodeId, config.chaincodeVersion, config.chaincodePath),
+			    repairShopClient.install(config.chaincodeId, config.chaincodeVersion, config.chaincodePath),
+			    policeClient.install(config.chaincodeId, config.chaincodeVersion, config.chaincodePath)
+			https://fabric-sdk-node.github.io/Client.html#installChaincode__anchor
+			Chaincode installation is simply uploading the chaincode source and dependencies to the peers. This operation is "channel-agnostic" and is performed on a peer-by-peer basis. Only the peer organization's ADMIN identities are allowed to perform this operation.
+		// Instantiate chaincode on at least ONE peer
+			Instantiating the chaincode on a single peer should be enough (for now) + init function
+			await insuranceClient.instantiate(config.chaincodeId, config.chaincodeVersion, DEFAULT_CONTRACT_TYPES);
+			await insuranceClient.instantiate(config.chaincodeId,
+				_channel.sendInstantiateProposal(request);
+			https://fabric-sdk-node.github.io/Channel.html#sendInstantiateProposal__anchor
+			Sends a chaincode instantiate proposal to one or more endorsing peers. A chaincode must be instantiated on a channel-by-channel basis before it can be used. The chaincode must first be installed on the endorsing peers where this chaincode is expected to run, by calling client.installChaincode(). 
+			Instantiating a chaincode is a full transaction operation, meaning it must be first endorsed as a proposal, then the endorsements are sent to the orderer to be processed for ordering and validation. When the transaction finally gets committed to the channel's ledger on the peers, the chaincode is then considered activated and the peers are ready to take requests to process transactions.
+		READY!
+	})();
+
+TODO: Register user for what when we already have admin for each peer
+There are some kinds of user here:
+	Peer organization's ADMIN identities:
+		System user. Created when setting up the network. Used to install chaincode to peers of its organization
+	Submitter:
+		System user: Created when the first time call to: web\www\blockchain\utils.js#getSubmitter(...). In this case, it is admin@adminpw user, used to submit transaction to the blockchain
+	Login user:
+		Application User: End user must register/login to the web app. And their user name will be save to ledger (act as a field in table)
+	https://github.com/hyperledger/education/blob/master/LFS171x/fabric-material/tuna-app/registerAdmin.js
+
+Waiting with timeout:
+	await new Promise(resolve => {   setTimeout(resolve, 10000); });
+
+https://fabric-sdk-node.github.io/Client.html
+https://fabric-sdk-node.github.io/FabricCAServices.html
+
+*Peer.js: represents for each peer
+	Delegate request from Web to Chaincode
+	let c = Object.assign({}, contract, { uuid: uuidV4() });
+	https://developer.mozilla.org/vi/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
+	Event:
+		web\www\blockchain\repairShopPeer.js
+		export const prependListener = client.prependListener.bind(client);
+		export const removeListener = client.removeListener.bind(client);
+
+
+web\www\blockchain\utils.js
+	Get or query submitter user (here is admin@adminpw) used to submit transaction to blockchain
+	this._adminUser = await getSubmitter(
+        this._client, "admin", "adminpw", this._caConfig);
+   	client.getUserContext(enrollmentID, true);
+   	if not yet enrolled:
+    	user = ca.enroll
+    	client.setUserContext(user);
+
+    Check if having admin org identity. Its identity is generated when setting up org (ibm_fabric.sh)
+    async getOrgAdmin() {
+    	return this._client.createUser({
+	      username: `Admin@${this._peerConfig.hostname}`,
+	      mspid: this._caConfig.mspId,
+	      cryptoContent: {
+	        privateKeyPEM: this._admin.key,
+	        signedCertPEM: this._admin.cert
+	      }
+	    });
+    }
+OrganizationClient#constructor()
+	_client.newChannel(channelName);
+	Returns a Channel instance with the given name. This represents a channel and its associated ledger.
+
+	NOTE: it is not create the channel, but return the channel (setting) instance. To create a channel in the Fabric, call createChannel()
+
+	A Channel object captures the settings needed to interact with a fabric backend in the context of a channel. These settings including the list of participating organizations, represented by instances of Membership Service Providers (MSP), the list of endorsing peers, and an orderer. 
+
+	A client application can use the Channel object to create new channels with the orderer, update an existing channel, send various channel-aware requests to the peers such as invoking chaincodes to process transactions or queries. 
+
+Nothing special. All methods in utils.js are used by other class.	
+
+
+======================================================================
+============================ CHAINCODE ===============================
+======================================================================
+web\chaincode\src\bcins\*.go
+	data.go
+	invoke_insurance.go
+	invoke_police.go
+	invoke_repairshop.go
+	invoke_shop.go
+	main.go
+TODO:
+	Read & understand syntax of chaincode
+	
+https://github.com/hyperledger/fabric/blob/release-1.3/core/chaincode/shim/interfaces.go
+
+main.go: entry point
+	func main() {
+		...
+	}
+	
+Logger:
+	var logger = shim.NewLogger("main")
+	
+Function map:
+	var bcFunctions = map[string]func(shim.ChaincodeStubInterface, []string) pb.Response
+
+Get function and parameter
+_, args := stub.GetFunctionAndParameters()
+
+In general, CompositeKey is and object act as a key of State
+contractKey, err := stub.CreateCompositeKey(prefixContract, []string{dto.Username, dto.UUID})
+
+input.Username like the query string, only get state with key contain input.Username
+var resultsIterator shim.StateQueryIteratorInterface
+resultsIterator, err = stub.GetStateByPartialCompositeKey(prefixContract, []string{input.Username})
+
+SplitCompositeKey will split key to keyParts array
+kvResult, err := resultsIterator.Next()
+prefix, keyParts, err := stub.SplitCompositeKey(kvResult.Key)
+
+Iterator
+	kvResult.Value
+	kvResult.Key
+https://github.com/hyperledger/fabric/blob/release-1.3/protos/ledger/queryresult/kv_query_result.pb.go
+
+Interface:
+results := []interface{}{}: pre-defined for an array of result objects
+interface{}: init a object
+web\chaincode\src\bcins\invoke_police.go#listTheftClaims(...)
+	
+Define a struct, init it and assign to dto object
+dto := struct {
+	UUID             string    `json:"uuid"`
+	ContractTypeUUID string    `json:"contract_type_uuid"`
+}{}
+
+response := struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}{
+	Username: u.Username,
+	Password: u.Password,
+}
+
+TODO:
+// Construct response struct
+result := struct {
+	UUID string `json:"uuid"`
+	*contract
+	Claims []claim `json:"claims,omitempty"`
+}{}
+https://www.sohamkamani.com/blog/golang/2018-07-19-golang-omitempty/
+
+TODO:
+	When chaincode (*.go) is build?
+	When install the chaincode, it will be implicitly build. build chaincodes (compile before you deploy, this step is optional but is a must if you edit chaincodes and want to restart the network so as to make sure it does not fail to compile during deployment )
+	For chaincode to properly run on your system, you need to have chaincode defined in your GOPATH. To do this, move your chaincode to $GOPATH/src folder.
+	web\www\blockchain\utils.js
+		process.env.GOPATH = resolve(__dirname, '../../chaincode');
+	In this case, we do not need to build chaincode first

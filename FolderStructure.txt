@@ -1,0 +1,264 @@
++binary_mac
+  configtxgen
+  cryptogen
++binary_ubuntu
+  configtxgen
+  cryptogen
++cli
+  Dockerfile
+  script.sh
++images
++insuranceCA
+  Dockerfile
+  fabric-ca-server-config.yaml
++insurancePeer
+  Dockerfile
++orderer
+  Dockerfile
++policeCA
+  Dockerfile
+  fabric-ca-server-config.yaml
++policePeer
+  Dockerfile
++repairShopCA
+  Dockerfile
+  fabric-ca-server-config.yaml
++repairShopPeer
+  Dockerfile
++shopCA
+  Dockerfile
+  fabric-ca-server-config.yaml
++shopPeer
+  Dockerfile
++web
+  +chaincode
+    +src
+      +bcins
+        data.go
+        invoke_insurance.go
+        invoke_police.go
+        invoke_repairshop.go
+        invoke_shop.go
+        main.go
+  +locales
+    de.json
+    en.json
+  +src
+    +block-explorer
+      +components
+        Block.js
+        Container.js
+        Transaction.js
+      +locales
+        de.json
+        en.json
+      api.js
+      index.js
+      style.scss
+      translations.js
+    +insurance
+      +actions
+        claimProcessingActions.js
+        claimProcessingActionTypes.js
+        contractsActions.js
+        contractsActionTypes.js
+        contractTemplateActions.js
+        contractTemplateActionTypes.js
+        userMgmtActions.js
+        userMgmtActionTypes.js
+      +components
+        +claim-processing
+          ClaimComponent.js
+          ClaimsPage.js
+        +contract-management
+          App.js
+          ContractTemplatesPage.js
+          NewContractTemplatePage.js
+        +self-service
+          App.js
+          ClaimPage.js
+          ContractClaimsPage.js
+          ContractsPage.js
+          LoginPage.js
+        App.js
+      +locales
+        de.json
+        en.json
+      +reducers
+        claimProcessingReducer.js
+        contractsReducer.js
+        contractTemplatesReducer.js
+        initialState.js
+        rootReducer.js
+        userMgmtReducer.js
+      api.js
+      index.js
+      router.js
+      store.js
+      translations.js
+    +police
+      +actions
+        policeActions.js
+        policeActionTypes.js
+      +components
+        App.js
+        TheftClaimComponent.js
+        TheftClaimsPage.js
+      +locales
+        de.json
+        en.json
+      +reducers
+        initialState.js
+        policeReducer.js
+        rootReducer.js
+      api.js
+      index.js
+      router.js
+      store.js
+      translations.js
+    +repair-shop
+      +actions
+        repairShopActions.js
+        repairShopActionTypes.js
+      +components
+        App.js
+        RepairOrderComponent.js
+        RepairOrdersPage.js
+      +locales
+        de.json
+        en.json
+      +reducers
+        initialState.js
+        repairShopReducer.js
+        rootReducer.js
+      api.js
+      index.js
+      router.js
+      store.js
+      translations.js
+    +shared
+      DateInput.js
+      getLocale.js
+      Loading.js
+      NotFoundPage.js
+      SelectList.js
+    +shop
+      +actions
+        insuranceActions.js
+        insuranceActionTypes.js
+        paymentActions.js
+        paymentActionTypes.js
+        shopActions.js
+        shopActionTypes.js
+        userMgmtActions.js
+        userMgmtActionTypes.js
+      +components
+        App.js
+        ChooseInsurancePage.js
+        ChooseProductPage.js
+        PaymentPage.js
+        ProductCarousel.js
+        SummaryPage.js
+      +locales
+        de.json
+        en.json
+      +reducers
+        initialState.js
+        insuranceReducer.js
+        paymentReducer.js
+        rootReducer.js
+        shopReducer.js
+        userMgmtReducer.js
+      api.js
+      index.js
+      products.js
+      router.js
+      store.js
+      translations.js
+    .babelrc
+    common.js
+    common.scss
+    northstar-forms.css
+    northstar-tables.css
+    northstar.css
+    postcss.config.js
+  +static
+    +img
+      +favicon
+        browserconfig.xml
+        favicon.ico
+        manifest.json
+      +icons
+      +products
+    +js
+      masonry.js
+      northstar-forms.js
+      northstar-tables.js
+      northstar.js
+  +tools
+    build.js
+  +views
+    home.pug
+    insurance-main.pug
+    insurance.pug
+    police.pug
+    repair-shop.pug
+    shop-main.pug
+    shop.pug
+    _favicon.pug
+    _layout.pug
+  +www
+    +blockchain
+      config.js
+      insurancePeer.js
+      policePeer.js
+      repairShopPeer.js
+      setup.js
+      shopPeer.js
+      utils.js
+    +config
+      express.js
+      i18n.js
+      security.js
+    +routers
+      insurance.router.js
+      police.router.js
+      repair-shop.router.js
+      shop.router.js
+    app.js
+    server.js
+  .babelrc
+  .dockerignore
+  .editorconfig
+  .env.sample
+  .eslintignore
+  .eslintrc
+  .gitignore
+  .npmrc
+  channel.tx
+  Dockerfile
+  LICENSE
+  manifest.yml
+  package.json
+  webpack.config.dev.js
+  webpack.config.prod.js
+.dockerignore
+.gitignore
+build_mac.sh
+build_ubuntu.sh
+ca-base.yaml
+clean.sh
+configtx.yaml
+configtxgen
+crypto-config.yaml
+cryptogen
+docker-compose.yaml
+docker-images.sh
+generate-certs.sh
+generate-cfgtx.sh
+ibm_fabric.sh
+LICENSE
+peer-base.yaml
+README-cn.md
+README-ja.md
+README.md
