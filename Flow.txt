@@ -88,26 +88,6 @@ web\www\config\express.js
 		
 Then render Home page:
 	web\views\home.pug
-	
-======================================================================
-============================== REACT =================================
-======================================================================
-	web\src\block-explorer\*
-	web\src\insurance\*
-		+actions      
-		+components			
-		+locales			
-		+reducers
-		api.js
-		index.js
-		router.js
-		store.js
-		translations.js
-	web\src\police\*
-	web\src\repair-shop\*
-	web\src\shop\*
-
-TODO
 
 ======================================================================
 =============================== SDK ==================================
@@ -335,3 +315,209 @@ TODO:
 	web\www\blockchain\utils.js
 		process.env.GOPATH = resolve(__dirname, '../../chaincode');
 	In this case, we do not need to build chaincode first
+	
+	
+======================================================================
+============================== REACT =================================
+======================================================================
+	web\src\block-explorer\*
+	web\src\insurance\*
+		+actions      
+		+components			
+		+locales			
+		+reducers
+		api.js
+		index.js
+		router.js
+		store.js
+		translations.js
+	web\src\police\*
+	web\src\repair-shop\*
+	web\src\shop\*
+
+After start Docker compose, Web instance will be start from
+.\web\Dockerfile
+	Build and then start with command
+		EXPOSE 3000
+		CMD ["npm", "run", "serve"]
+		
+web\package.json
+"serve": "cross-env NODE_ENV=production&&node ./bin/server"
+
+web\www\server.js
+import server from './app';
+const port = process.env.PORT || process.env.VCAP_APP_PORT || 3000;
+server.listen(port, () => {
+  console.log('Server running on port: %d', port);
+});
+
+
+web\www\app.js
+Setting express and router from other components
+
+Routers:
+- web\www\routers
+	shop.router.js
+	repair-shop.router.js
+	police.router.js
+	insurance.router.js
+
+- web\www\routers\shop.router.js
+It will return JSON data to caller or render a view template
+	res.json({ success: 'Contract signed.', loginInfo });
+	res.render('shop', {
+	  shopActive: true,
+	  bikesActive: req.originalUrl.includes('bikes'),
+	  smartPhonesActive: req.originalUrl.includes('smart-phones'),
+	  skisActive: req.originalUrl.includes('skis')
+    });
+	http://expressjs.com/en/guide/using-template-engines.html
+	smartPhonesActive will be passed to *.pug file
+	web\views\shop.pug
+		extends web\views\_layout.pug
+	
+From view template, when user click on a link or on action, it will be routed by web\src\shop\router.js to go to specific React Component
+
+React Component deep dive
+web\src\insurance\*
+		+actions      
+		+components			
+		+locales			
+		+reducers
+		api.js
+		index.js
+		router.js
+		store.js
+		translations.js
+		
+web\src\shop\index.js
+const store = configStore();
+	// web\src\insurance\store.js
+	export default function configStore(initialState) {
+	  return createStore(
+		rootReducer,
+		// web\src\insurance\reducers\rootReducer.js
+			export default combineReducers({
+			  claimProcessing,
+			  contractTemplates,
+			  contracts,
+			  userMgmt
+			 });
+		initialState,
+		applyMiddleware(
+		  ReduxThunk // Use redux thunk
+		)
+	  );
+	}
+// store.dispatch is the way to fire/dispatch an action
+store.dispatch(loadClaims());
+store.dispatch(loadContractTypes());
+
+// Locale from package react-intl
+const locale = getLocale();
+addLocaleData([...deLocaleData, ...enLocaleData]);
+
+window.digitalData.page.pageInfo.language = locale;
+
+render(
+  <IntlProvider locale={locale} messages={translations[locale]} defaultLocale='en'>
+	// Use redux store
+    <StoreProvider store={store}>
+	  // web\src\insurance\router.js
+      <AppRouter />
+    </StoreProvider>
+  </IntlProvider>,
+  document.getElementById('app')
+);
+
+web\src\insurance\router.js
+export default function router() {
+  return (
+    <Router basename='/insurance'>
+      <App>
+        <Switch>
+
+          {/* Claim Self-Service */}
+          <Route path='/self-service'>
+            <SelfServiceApp>
+              <Switch>
+                <Route exact path='/self-service' component={LoginPage} />
+				<Route path='/self-service/contracts' component={ContractsPage} />
+			  </Switch>
+            </SelfServiceApp>
+          </Route>
+	... 
+	  </App>
+    </Router>
+  );
+}
+
+Action vs Reducer:
+Action is trigger by ui component or other action
+	it receives parameter and manipulate the logic
+	then either:
+		dispatch to another action
+		OR return the result: {type: xxx and payload: custom data}
+Then Redux will find the Reducer to process for return result from action
+	Reducer will update the state (store)
+
+UI component will use data in store to display on GUI
+https://medium.com/fullstackwebdevelopers/react-redux-tutorial-for-beginners-2018-with-cutting-edge-versions-of-simple-examples-f1b20e93bdf6
+
+
+bind:
+https://kipalog.com/posts/PHAN-BIET-CALL--APPLY-VA-BIND-TRONG-JAVASCRIPT
+web\src\insurance\components\claim-processing\ClaimComponent.js
+this.setReimbursable = this.setReimbursable.bind(this);
+setReimbursable(e) {
+    let { value } = e.target;
+    if (value) {
+      value = Number(value) ? value : 0;
+    }
+    this.setState({ reimbursable: value });
+  }
+<span>
+  <input type='text'
+	value={reimbursable} onChange={this.setReimbursable} />
+</span>
+
+
+Map state, action to props:
+web\src\insurance\components\self-service\ContractsPage.js
+import * as contractsActions from '../../actions/contractsActions';
+
+https://viblo.asia/p/react-proptypes-khai-bao-kieu-du-lieu-cho-component-naQZR1aPKvx
+static get propTypes() {
+	return {
+      intl: intlShape.isRequired,
+      user: PropTypes.object,
+      contracts: PropTypes.array,
+      contractsActions: PropTypes.object.isRequired
+    };
+}
+
+function mapStateToProps(state, ownProps) {
+  return {
+    user: state.userMgmt.user,
+    contracts: state.contracts
+  };
+}
+
+Usage
+props.contractsActions.loadContracts(props.user);
+
+if (typeof props.user === 'object') {
+  props.contractsActions.loadContracts(props.user);
+}
+
+function mapDispatchToProps(dispatch) {
+  return {
+    contractsActions: bindActionCreators(contractsActions, dispatch)
+  };
+}
+
+export default withRouter(connect(
+  mapStateToProps, mapDispatchToProps)(injectIntl(ContractsPage)));
+
+
+
