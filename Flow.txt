@@ -24,6 +24,7 @@ cd build-blockchain-insurance-app
 		
 	** When chaincode is build/install/instantiate?
 		When startup the web application (setup.js)
+		In this app, Chaincode is not build, but install/instantiate via Node SDK
 
 ./docker-images.sh
 	Build docker images for each peer
@@ -70,6 +71,9 @@ http://localhost:3000
 web\package.json
 "serve": "cross-env NODE_ENV=production&&node ./bin/server"
 
+"serve" is called from dockerfile of web image
+	CMD ["npm", "run", "serve"]
+
 web\www\server.js
 	import server from './app';
 	Start Server listening on port 3000
@@ -89,6 +93,8 @@ web\www\config\express.js
 Then render Home page:
 	web\views\home.pug
 
+See === React === section for more detail
+
 ======================================================================
 =============================== SDK ==================================
 ======================================================================
@@ -100,6 +106,8 @@ web\www\blockchain\*.js
 	setup.js
 	shopPeer.js
 	utils.js
+
+https://www.skcript.com/svr/setting-up-restful-api-server-for-hyperledger-fabric-with-nodejs-sdk/
 	
 config.js: Information about:
 	certs dir: '../../certs'
@@ -135,27 +143,31 @@ setup.js:
 	They are using the same orderer (orderer0)
 	
 	Initialized peer (JS) instances from config.js
+	Below method is call ONCE when setup.js is loaded
 	(async () => {
-		// Login with 
+		// Login with Submitter user (admin@adminpw)
 		// Setup event hubs
 		// Bootstrap blockchain network
 			Create channel and join the channel
 			 await insuranceClient.createChannel(config.channelConfig);
-			Calls the orderer to start building the new channel. A channel typically has more than one participating organizations. To create a new channel, one of the participating organizations should call this method to submit the creation request to the orderer service. 
-			Once the channel is successfully created by the orderer, the next step is to have each organization's peer nodes join the channel, by sending the channel configuration to each of the peer nodes. The step is accomplished by calling the joinChannel() method.
-				insuranceClient.joinChannel(),
-          		shopClient.joinChannel(),
-          		repairShopClient.joinChannel(),
-          		policeClient.joinChannel()
+				Calls the orderer to start building the new channel. A channel typically has more than one participating organizations. To create a new channel, ONE of the participating organizations should call this method to submit the creation request to the orderer service. 
+				Once the channel is successfully created by the orderer, the next step is to have each organization's peer nodes join the channel, by sending the channel configuration to each of the peer nodes. The step is accomplished by calling the joinChannel() method.
+			await Promise.all([
+	          insuranceClient.joinChannel(),
+	          shopClient.joinChannel(),
+	          repairShopClient.joinChannel(),
+	          policeClient.joinChannel()
+	        ]);
           	Readmore:
           		https://fabric-sdk-node.github.io/Client.html#createChannel__anchor
 				https://fabric-sdk-node.github.io/release-1.4/tutorial-channel-create.html
 		// Initialize network
-			await this._channel.initialize();
-				insuranceClient.initialize(),
-		      	shopClient.initialize(),
-		      	repairShopClient.initialize(),
-		      	policeClient.initialize()
+			await Promise.all([
+		      insuranceClient.initialize(),
+		      shopClient.initialize(),
+		      repairShopClient.initialize(),
+		      policeClient.initialize()
+		    ]);
 		    https://fabric-sdk-node.github.io/Channel.html#initialize__anchor
 		// Install chaincode on all peers
 			this._client.installChaincode(request);
@@ -164,11 +176,10 @@ setup.js:
 			    repairShopClient.install(config.chaincodeId, config.chaincodeVersion, config.chaincodePath),
 			    policeClient.install(config.chaincodeId, config.chaincodeVersion, config.chaincodePath)
 			https://fabric-sdk-node.github.io/Client.html#installChaincode__anchor
-			Chaincode installation is simply uploading the chaincode source and dependencies to the peers. This operation is "channel-agnostic" and is performed on a peer-by-peer basis. Only the peer organization's ADMIN identities are allowed to perform this operation.
+			Chaincode installation is simply uploading the chaincode source and dependencies to the peers. This operation is "channel-agnostic" and is performed on a peer-by-peer basis. ONLY the peer organization's ADMIN identities are allowed to perform this operation.
 		// Instantiate chaincode on at least ONE peer
 			Instantiating the chaincode on a single peer should be enough (for now) + init function
 			await insuranceClient.instantiate(config.chaincodeId, config.chaincodeVersion, DEFAULT_CONTRACT_TYPES);
-			await insuranceClient.instantiate(config.chaincodeId,
 				_channel.sendInstantiateProposal(request);
 			https://fabric-sdk-node.github.io/Channel.html#sendInstantiateProposal__anchor
 			Sends a chaincode instantiate proposal to one or more endorsing peers. A chaincode must be instantiated on a channel-by-channel basis before it can be used. The chaincode must first be installed on the endorsing peers where this chaincode is expected to run, by calling client.installChaincode(). 
@@ -179,18 +190,17 @@ setup.js:
 TODO: Register user for what when we already have admin for each peer
 There are some kinds of user here:
 	Peer organization's ADMIN identities:
-		System user. Created when setting up the network. Used to install chaincode to peers of its organization
+		System user. Created when setting up the network. Used to INSTALL chaincode to peers of its organization
 	Submitter:
-		System user: Created when the first time call to: web\www\blockchain\utils.js#getSubmitter(...). In this case, it is admin@adminpw user, used to submit transaction to the blockchain
+		System user: Created when the first time call to: web\www\blockchain\utils.js#getSubmitter(...). In this case, it is admin@adminpw user, used to SUBMIT TRANSACTION to the blockchain
 	Login user:
 		Application User: End user must register/login to the web app. And their user name will be save to ledger (act as a field in table)
 	https://github.com/hyperledger/education/blob/master/LFS171x/fabric-material/tuna-app/registerAdmin.js
+	https://fabric-sdk-node.github.io/Client.html
+	https://fabric-sdk-node.github.io/FabricCAServices.html
 
 Waiting with timeout:
 	await new Promise(resolve => {   setTimeout(resolve, 10000); });
-
-https://fabric-sdk-node.github.io/Client.html
-https://fabric-sdk-node.github.io/FabricCAServices.html
 
 *Peer.js: represents for each peer
 	Delegate request from Web to Chaincode
@@ -200,6 +210,7 @@ https://fabric-sdk-node.github.io/FabricCAServices.html
 		web\www\blockchain\repairShopPeer.js
 		export const prependListener = client.prependListener.bind(client);
 		export const removeListener = client.removeListener.bind(client);
+		https://kipalog.com/posts/PHAN-BIET-CALL--APPLY-VA-BIND-TRONG-JAVASCRIPT
 
 
 web\www\blockchain\utils.js
@@ -245,16 +256,38 @@ web\chaincode\src\bcins\*.go
 	invoke_repairshop.go
 	invoke_shop.go
 	main.go
-TODO:
-	Read & understand syntax of chaincode
-	
+
+Documentation	
 https://github.com/hyperledger/fabric/blob/release-1.3/core/chaincode/shim/interfaces.go
 
-main.go: entry point
+main.go:
+
+	Define Chaincode struct
+	type SmartContract struct {
+	}
+
+	Entry point
 	func main() {
+		logger.SetLevel(shim.LogInfo)
+
+		// Start the chaincode
+		err := shim.Start(new(SmartContract))
+		if err != nil {
+			fmt.Printf("Error starting Simple chaincode: %s", err)
+		}
+	}
+
+	Init is called when chaincode is instantiate from peers
+	func (t *SmartContract) Init(stub shim.ChaincodeStubInterface) pb.Response {
 		...
 	}
-	
+
+	After instantiated, all function call to chaincode must go through Invoke method first.
+	The Invoke method then delegate to another method
+	func (t *SmartContract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+		...
+	}
+
 Logger:
 	var logger = shim.NewLogger("main")
 	
@@ -299,7 +332,6 @@ response := struct {
 	Password: u.Password,
 }
 
-TODO:
 // Construct response struct
 result := struct {
 	UUID string `json:"uuid"`
@@ -310,7 +342,7 @@ https://www.sohamkamani.com/blog/golang/2018-07-19-golang-omitempty/
 
 TODO:
 	When chaincode (*.go) is build?
-	When install the chaincode, it will be implicitly build. build chaincodes (compile before you deploy, this step is optional but is a must if you edit chaincodes and want to restart the network so as to make sure it does not fail to compile during deployment )
+	When install the chaincode, it will be implicitly build. Build chaincodes (compile before you deploy, this step is optional but is a must if you edit chaincodes and want to restart the network so as to make sure it does not fail to compile during deployment )
 	For chaincode to properly run on your system, you need to have chaincode defined in your GOPATH. To do this, move your chaincode to $GOPATH/src folder.
 	web\www\blockchain\utils.js
 		process.env.GOPATH = resolve(__dirname, '../../chaincode');
@@ -365,6 +397,7 @@ Routers:
 - web\www\routers\shop.router.js
 It will return JSON data to caller or render a view template
 	res.json({ success: 'Contract signed.', loginInfo });
+
 	res.render('shop', {
 	  shopActive: true,
 	  bikesActive: req.originalUrl.includes('bikes'),
@@ -390,6 +423,7 @@ web\src\insurance\*
 		store.js
 		translations.js
 		
+STORE
 web\src\shop\index.js
 const store = configStore();
 	// web\src\insurance\store.js
@@ -453,7 +487,7 @@ export default function router() {
 }
 
 Action vs Reducer:
-Action is trigger by ui component or other action
+Action is triggered by ui component or other action
 	it receives parameter and manipulate the logic
 	then either:
 		dispatch to another action
@@ -489,11 +523,14 @@ import * as contractsActions from '../../actions/contractsActions';
 https://viblo.asia/p/react-proptypes-khai-bao-kieu-du-lieu-cho-component-naQZR1aPKvx
 static get propTypes() {
 	return {
-      intl: intlShape.isRequired,
-      user: PropTypes.object,
-      contracts: PropTypes.array,
-      contractsActions: PropTypes.object.isRequired
-    };
+	  user: PropTypes.object,
+	  history: PropTypes.object.isRequired,
+	  match: PropTypes.shape({
+	    params: PropTypes.shape({
+	      contractUuid: PropTypes.string.isRequired
+	    })
+	  }).isRequired
+	};
 }
 
 function mapStateToProps(state, ownProps) {
@@ -516,8 +553,61 @@ function mapDispatchToProps(dispatch) {
   };
 }
 
-export default withRouter(connect(
-  mapStateToProps, mapDispatchToProps)(injectIntl(ContractsPage)));
+export default withRouter(
+				connect(mapStateToProps, mapDispatchToProps)(
+					injectIntl(ContractsPage)
+				));
+
+Higher Order Components trong ReactJs
+	https://viblo.asia/p/higher-order-components-trong-reactjs-yMnKMJQQZ7P
+
+require vs import
+https://www.educba.com/require-vs-import/
+Import is always run at the very beginning of the file and can’t be run conditionally. On the other hand require can be used inline, conditionally,
+require Syntax :
+	var dep = require(“dep”);
+	console.log(dep.bar);
+	dep.foo();
+import Syntax :
+	import {foo, bar} from “dep”;
+	console.log(bar);
+	foo();
 
 
+props vs state
+https://lucybain.com/blog/2016/react-state-vs-pros/
+	props is passed from outside into a component
+	class Welcome extends React.Component {
+	  render() {
+	    return <h1>Hello {this.props.name}</h1>;
+	  }
+	}
+	const element = <Welcome name="Sara" />;
+	
+	state is defined inside a component
+	class Button extends React.Component {
+	  constructor() {
+	    super();
+	    this.state = {
+	      count: 0,
+	    };
+	  }
 
+	  updateCount() {
+	    this.setState((prevState, props) => {
+	      return { count: prevState.count + 1 }
+	    });
+	  }
+
+	  render() {
+	    return (<button
+	              onClick={() => this.updateCount()}
+	            >
+	              Clicked {this.state.count} times
+	            </button>);
+	  }
+	}
+
+=========================================================================================
+========================================= END ===========================================
+=========================================================================================
